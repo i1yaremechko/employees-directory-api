@@ -10,15 +10,25 @@ function parsePort(value: string | undefined, fallback: number): number {
   const port = Number(value);
 
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error(`Invalid port value: ${value}`);
+    throw new Error(`Invalid PORT value: "${value}"`);
   }
+
   return port;
 }
 
+function requireEnv(name: string): string {
+  const value = process.env[name];
+
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+
+  return value;
+}
+
 export const env = {
-  PORT: parsePort(process.env.PORT, 3000),
-  NODE_ENV: process.env.NODE_ENV ?? 'development',
-  CORS_ORIGIN: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
-  DATABASE_URL:
-    process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/employees',
+  nodeEnv: process.env.NODE_ENV ?? 'development',
+  port: parsePort(process.env.PORT, 3000),
+  corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+  databaseUrl: requireEnv('DATABASE_URL'),
 } as const;

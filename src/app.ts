@@ -6,7 +6,7 @@ import { env } from './config/env';
 
 export const app = express();
 
-app.use(cors({ origin: env.CORS_ORIGIN }));
+app.use(cors({ origin: env.corsOrigin }));
 app.use(express.json());
 app.use('/api', apiRouter);
 app.use(notFound);
