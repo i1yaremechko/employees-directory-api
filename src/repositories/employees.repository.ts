@@ -42,3 +42,24 @@ export async function insertEmployee(input: CreateEmployeeInput): Promise<Employ
 
   return rows[0];
 }
+
+export async function findAllEmployees(): Promise<EmployeeRow[]> {
+  const { rows } = await pool.query<EmployeeRow>(
+    `SELECT ${EMPLOYEE_COLUMNS}
+     FROM employees
+     ORDER BY created_at DESC, id`
+  );
+
+  return rows;
+}
+
+export async function findEmployeeById(id: string): Promise<EmployeeRow | null> {
+  const { rows } = await pool.query<EmployeeRow>(
+    `SELECT ${EMPLOYEE_COLUMNS}
+     FROM employees
+     WHERE id = $1`,
+    [id]
+  );
+
+  return rows[0] ?? null;
+}

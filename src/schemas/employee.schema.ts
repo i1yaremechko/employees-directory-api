@@ -57,4 +57,8 @@ export const createEmployeeSchema = z.object({
   avatarUrl: avatarUrlSchema,
 });
 
+export const employeeParamsSchema = z.object({
+  id: z.uuid({ message: 'id must be a valid UUID' }),
+});
+
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
