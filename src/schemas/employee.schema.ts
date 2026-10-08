@@ -35,15 +35,13 @@ const tagSchema = z
   .nullish()
   .transform((value) => value || null);
 
-const avatarUrlSchema = z
+const avatarUrlBaseSchema = z
   .string()
   .trim()
   .max(2048)
   .refine((value) => value === '' || /^https?:\/\//i.test(value), {
     message: 'avatarUrl must be an http(s) URL',
-  })
-  .optional()
-  .default('');
+  });
 
 export const createEmployeeSchema = z.object({
   firstName: nameSchema,
@@ -54,7 +52,12 @@ export const createEmployeeSchema = z.object({
   position: z.enum(EMPLOYEE_POSITIONS),
   status: z.enum(EMPLOYEE_STATUSES).default('ACTIVE'),
   tag: tagSchema,
-  avatarUrl: avatarUrlSchema,
+  avatarUrl: avatarUrlBaseSchema.optional().default(''),
+});
+
+export const updateEmployeeSchema = createEmployeeSchema.extend({
+  status: z.enum(EMPLOYEE_STATUSES),
+  avatarUrl: avatarUrlBaseSchema,
 });
 
 export const employeeParamsSchema = z.object({
@@ -62,3 +65,4 @@ export const employeeParamsSchema = z.object({
 });
 
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
+export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;

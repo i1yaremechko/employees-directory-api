@@ -5,8 +5,13 @@ import {
   findAllEmployees,
   findEmployeeById,
   insertEmployee,
+  updateEmployee as updateEmployeeRow,
 } from '../repositories/employees.repository';
-import { createEmployeeSchema, employeeParamsSchema } from '../schemas/employee.schema';
+import {
+  createEmployeeSchema,
+  employeeParamsSchema,
+  updateEmployeeSchema,
+} from '../schemas/employee.schema';
 
 export async function createEmployee(req: Request, res: Response): Promise<void> {
   const input = createEmployeeSchema.parse(req.body);
@@ -24,6 +29,18 @@ export async function getEmployees(_req: Request, res: Response): Promise<void> 
 export async function getEmployeeById(req: Request, res: Response): Promise<void> {
   const { id } = employeeParamsSchema.parse(req.params);
   const row = await findEmployeeById(id);
+
+  if (!row) {
+    throw new HttpError(404, 'Employee not found');
+  }
+
+  res.json(toEmployee(row));
+}
+
+export async function updateEmployee(req: Request, res: Response): Promise<void> {
+  const { id } = employeeParamsSchema.parse(req.params);
+  const input = updateEmployeeSchema.parse(req.body);
+  const row = await updateEmployeeRow(id, input);
 
   if (!row) {
     throw new HttpError(404, 'Employee not found');

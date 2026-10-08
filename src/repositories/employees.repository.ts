@@ -1,5 +1,5 @@
 import { pool } from '../db/pool';
-import type { CreateEmployeeInput } from '../schemas/employee.schema';
+import type { CreateEmployeeInput, UpdateEmployeeInput } from '../schemas/employee.schema';
 
 export interface EmployeeRow {
   id: string;
@@ -59,6 +59,41 @@ export async function findEmployeeById(id: string): Promise<EmployeeRow | null> 
      FROM employees
      WHERE id = $1`,
     [id]
+  );
+
+  return rows[0] ?? null;
+}
+
+export async function updateEmployee(
+  id: string,
+  input: UpdateEmployeeInput
+): Promise<EmployeeRow | null> {
+  const { rows } = await pool.query<EmployeeRow>(
+    `UPDATE employees
+     SET first_name = $2,
+         last_name  = $3,
+         email      = $4,
+         phone      = $5,
+         birth_date = $6,
+         position   = $7,
+         status     = $8,
+         tag        = $9,
+         avatar_url = $10,
+         updated_at = now()
+     WHERE id = $1
+     RETURNING ${EMPLOYEE_COLUMNS}`,
+    [
+      id,
+      input.firstName,
+      input.lastName,
+      input.email,
+      input.phone,
+      input.birthDate,
+      input.position,
+      input.status,
+      input.tag,
+      input.avatarUrl,
+    ]
   );
 
   return rows[0] ?? null;
