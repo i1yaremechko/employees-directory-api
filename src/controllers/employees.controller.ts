@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { HttpError } from '../errors/HttpError';
 import { toEmployee } from '../mappers/employee.mapper';
 import {
+  deleteEmployee as deleteEmployeeRow,
   findAllEmployees,
   findEmployeeById,
   insertEmployee,
@@ -47,4 +48,15 @@ export async function updateEmployee(req: Request, res: Response): Promise<void>
   }
 
   res.json(toEmployee(row));
+}
+
+export async function deleteEmployee(req: Request, res: Response): Promise<void> {
+  const { id } = employeeParamsSchema.parse(req.params);
+  const isDeleted = await deleteEmployeeRow(id);
+
+  if (!isDeleted) {
+    throw new HttpError(404, 'Employee not found');
+  }
+
+  res.status(204).send();
 }

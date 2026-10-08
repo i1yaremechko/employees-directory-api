@@ -98,3 +98,9 @@ export async function updateEmployee(
 
   return rows[0] ?? null;
 }
+
+export async function deleteEmployee(id: string): Promise<boolean> {
+  const result = await pool.query('DELETE FROM employees WHERE id = $1', [id]);
+
+  return (result.rowCount ?? 0) > 0;
+}
