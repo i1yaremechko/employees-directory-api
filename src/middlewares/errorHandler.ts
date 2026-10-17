@@ -1,7 +1,6 @@
 import type { ErrorRequestHandler } from 'express';
 import { DatabaseError } from 'pg';
 import { ZodError } from 'zod';
-import { HttpError } from '../errors/HttpError';
 
 const PG_UNIQUE_VIOLATION = '23505';
 
@@ -14,11 +13,6 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
         message: issue.message,
       })),
     });
-    return;
-  }
-
-  if (error instanceof HttpError) {
-    res.status(error.status).json({ message: error.message });
     return;
   }
 

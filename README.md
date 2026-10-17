@@ -2,67 +2,46 @@
 
 REST API (CRUD) for the [Employees Directory](https://github.com/i1yaremechko/employees-directory) project.
 
-## Tech Stack
-
-- Node.js, Express 5, TypeScript
-- PostgreSQL 17 (Docker Compose), `pg` driver
-- zod (validation)
-- ESLint, Prettier, Husky, lint-staged
-
-## Requirements
-
-- Node.js 22 or newer
-- Docker Desktop (for PostgreSQL)
+**Stack:** Node.js, Express 5, TypeScript, PostgreSQL, zod.
 
 ## Quick Start
+
+Requires Node.js 22+ and Docker.
 
 ```bash
 npm install
 cp .env.example .env     # Windows cmd: copy .env.example .env
-docker compose up -d     # start PostgreSQL
-npm run migrate          # create tables
-npm run seed             # optional: add 3 sample employees
+docker compose up -d     # starts PostgreSQL, creates the table and sample data
 npm run dev              # http://localhost:3000
 ```
 
-The database listens on `127.0.0.1:55432`, so it does not clash with a PostgreSQL installed on the host.
+On the first start the database container runs the files from `sql/`:
+`01-schema.sql` creates the table, `02-seed.sql` adds three sample employees.
+To recreate the database from scratch: `docker compose down -v && docker compose up -d`.
+
+For a hosted database (e.g. Neon) run both SQL files once in its SQL editor.
 
 ## Environment Variables
 
-| Variable       | Default                 | Description                                  |
-| -------------- | ----------------------- | -------------------------------------------- |
-| `PORT`         | `3000`                  | HTTP port                                    |
-| `NODE_ENV`     | `development`           | Environment name                             |
-| `CORS_ORIGIN`  | `http://localhost:5173` | Allowed frontend origin (scheme, host, port) |
-| `DATABASE_URL` | required                | PostgreSQL connection string                 |
-
-## Scripts
-
-| Script              | Description                              |
-| ------------------- | ---------------------------------------- |
-| `npm run dev`       | Start the server with auto-reload        |
-| `npm run build`     | Compile TypeScript to `dist/`            |
-| `npm start`         | Run the compiled server                  |
-| `npm run migrate`   | Apply new SQL files from `migrations/`   |
-| `npm run seed`      | Insert sample employees (safe to re-run) |
-| `npm run typecheck` | Type-check without emitting files        |
-| `npm run lint`      | Run ESLint                               |
-| `npm run format`    | Format the code with Prettier            |
+| Variable       | Default                 | Description                       |
+| -------------- | ----------------------- | --------------------------------- |
+| `PORT`         | `3000`                  | HTTP port                         |
+| `NODE_ENV`     | `development`           | Environment name                  |
+| `CORS_ORIGIN`  | `http://localhost:5173` | Allowed frontend origin (no path) |
+| `DATABASE_URL` | required                | PostgreSQL connection string      |
 
 ## API
 
-Base path: `/api`
+| Method   | Path                 | Success | Errors              |
+| -------- | -------------------- | ------- | ------------------- |
+| `GET`    | `/api/health`        | `200`   | `503`               |
+| `GET`    | `/api/employees`     | `200`   |                     |
+| `GET`    | `/api/employees/:id` | `200`   | `400`, `404`        |
+| `POST`   | `/api/employees`     | `201`   | `400`, `409`        |
+| `PUT`    | `/api/employees/:id` | `200`   | `400`, `404`, `409` |
+| `DELETE` | `/api/employees/:id` | `204`   | `400`, `404`        |
 
-| Method   | Path             | Description             | Success | Errors              |
-| -------- | ---------------- | ----------------------- | ------- | ------------------- |
-| `GET`    | `/health`        | API and database status | `200`   | `503`               |
-| `GET`    | `/employees`     | List employees          | `200`   | `400`               |
-| `GET`    | `/employees/:id` | Get one employee        | `200`   | `400`, `404`        |
-| `POST`   | `/employees`     | Create an employee      | `201`   | `400`, `409`        |
-| `PUT`    | `/employees/:id` | Replace an employee     | `200`   | `400`, `404`, `409` |
-| `DELETE` | `/employees/:id` | Delete an employee      | `204`   | `400`, `404`        |
-
-### Employee object
+Employee object:
 
 ```json
 {
@@ -81,65 +60,12 @@ Base path: `/api`
 ```
 
 - `position`: `DEVELOPER`, `DESIGNER`, `MANAGER`, `ANALYST`, `RECRUITER`
-- `status`: `ACTIVE`, `INACTIVE`
-- `birthDate`: `DD.MM.YYYY`, a real date between 01.01.1900 and today
-- `createdDate`: Unix time in seconds
-- `tag`: string or `null`
+- `status`: `ACTIVE` (default), `INACTIVE`
+- `birthDate`: `DD.MM.YYYY`; `createdDate`: Unix time in seconds
+- Email is stored in lower case and must be unique (`409` otherwise)
+- `POST` and `PUT` take the same body; `id` and `createdDate` are ignored. `PUT` replaces the whole record.
+- Validation errors: `{ "message": "Validation failed", "errors": [{ "field": "email", "message": "..." }] }`
 
-### Create and update
+## Scripts
 
-`POST` requires `firstName`, `lastName`, `email`, `phone`, `birthDate` and `position`. `status` defaults to `ACTIVE`, `avatarUrl` defaults to an empty string, `tag` is optional.
-
-`PUT` replaces the whole record, so every field except `tag` is required. `id` and `createdDate` in the body are ignored. Email must be unique, case-insensitive.
-
-### List query parameters
-
-All parameters are optional.
-
-| Parameter  | Example                         | Description                                                  |
-| ---------- | ------------------------------- | ------------------------------------------------------------ |
-| `search`   | `?search=alex`                  | Case-insensitive match in full name, email and tag           |
-| `position` | `?position=DEVELOPER,DESIGNER`  | One or several positions, comma-separated                    |
-| `status`   | `?status=ACTIVE`                | Filter by status                                             |
-| `sort`     | `?sort=alphabet` or `birthDate` | Sorting; by default the newest employees come first          |
-| `order`    | `?order=desc`                   | Sort direction (`asc` by default), used together with `sort` |
-
-### Errors
-
-Validation errors (`400`):
-
-```json
-{
-  "message": "Validation failed",
-  "errors": [{ "field": "email", "message": "Invalid email address" }]
-}
-```
-
-Other errors have the form `{ "message": "..." }`.
-
-## Project Structure
-
-```
-migrations/      SQL migrations (applied in file name order)
-src/
-  config/        environment variables
-  controllers/   request handlers
-  db/            connection pool, migration runner, seed
-  errors/        HttpError
-  mappers/       database row -> API object
-  middlewares/   404 and error handlers
-  repositories/  SQL queries
-  routes/        route definitions
-  schemas/       zod validation schemas
-  types/         shared types
-  utils/         date helpers
-```
-
-## Database
-
-Migrations live in `migrations/` as numbered SQL files. Applied files are tracked in the `schema_migrations` table and are never edited afterwards. A schema change is always a new file.
-
-```bash
-docker compose stop          # stop the database, data is kept
-docker compose down -v       # remove the database together with its data
-```
+`npm run dev`, `npm run build`, `npm start`, `npm run typecheck`, `npm run lint`, `npm run format`

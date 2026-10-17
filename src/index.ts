@@ -1,9 +1,9 @@
 import { app } from './app';
 import { env } from './config/env';
-import { checkDbConnection, closeDbPool } from './db/pool';
+import { pool } from './db/pool';
 
 async function start(): Promise<void> {
-  await checkDbConnection();
+  await pool.query('SELECT 1');
   console.log('Connected to PostgreSQL');
 
   const server = app.listen(env.port, () => {
@@ -13,7 +13,7 @@ async function start(): Promise<void> {
   function shutdown(signal: string): void {
     console.log(`${signal} received, shutting down...`);
     server.close(async () => {
-      await closeDbPool();
+      await pool.end();
       process.exit(0);
     });
   }

@@ -1,11 +1,7 @@
 import { z } from 'zod';
-import { EMPLOYEE_POSITIONS, EMPLOYEE_STATUSES } from '../types/employee';
-import { parseBirthDate, todayIso } from '../utils/date';
 
 const nameSchema = z.string().trim().min(1).max(50);
-
-const emailSchema = z.string().trim().max(254).pipe(z.email());
-
+const emailSchema = z.string().trim().toLowerCase().pipe(z.email());
 const phoneSchema = z
   .string()
   .trim()
@@ -15,18 +11,27 @@ const birthDateSchema = z
   .string()
   .trim()
   .transform((value, ctx) => {
-    const iso = parseBirthDate(value);
+    const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(value);
+    const [day, month, year] = match ? match.slice(1).map(Number) : [];
+    const date = new Date(Date.UTC(year, month - 1, day));
+    const isRealDate =
+      date.getUTCFullYear() === year &&
+      date.getUTCMonth() === month - 1 &&
+      date.getUTCDate() === day;
 
-    if (!iso || iso < '1900-01-01' || iso > todayIso()) {
+    if (!isRealDate || date > new Date()) {
       ctx.addIssue({
         code: 'custom',
-        message: 'birthDate must be a real date in DD.MM.YYYY format, from 01.01.1900 until today',
+        message: 'birthDate must be a real past date in DD.MM.YYYY format',
       });
       return z.NEVER;
     }
 
-    return iso;
+    return date.toISOString().slice(0, 10);
   });
+
+const POSITIONS = ['DEVELOPER', 'DESIGNER', 'MANAGER', 'ANALYST', 'RECRUITER'] as const;
+const STATUSES = ['ACTIVE', 'INACTIVE'] as const;
 
 const tagSchema = z
   .string()
@@ -35,7 +40,7 @@ const tagSchema = z
   .nullish()
   .transform((value) => value || null);
 
-const avatarUrlBaseSchema = z
+const avatarUrlSchema = z
   .string()
   .trim()
   .max(2048)
@@ -43,26 +48,20 @@ const avatarUrlBaseSchema = z
     message: 'avatarUrl must be an http(s) URL',
   });
 
-export const createEmployeeSchema = z.object({
+export const employeeSchema = z.object({
   firstName: nameSchema,
   lastName: nameSchema,
   email: emailSchema,
   phone: phoneSchema,
   birthDate: birthDateSchema,
-  position: z.enum(EMPLOYEE_POSITIONS),
-  status: z.enum(EMPLOYEE_STATUSES).default('ACTIVE'),
+  position: z.enum(POSITIONS),
+  status: z.enum(STATUSES).default('ACTIVE'),
   tag: tagSchema,
-  avatarUrl: avatarUrlBaseSchema.optional().default(''),
-});
-
-export const updateEmployeeSchema = createEmployeeSchema.extend({
-  status: z.enum(EMPLOYEE_STATUSES),
-  avatarUrl: avatarUrlBaseSchema,
+  avatarUrl: avatarUrlSchema.optional().default(''),
 });
 
 export const employeeParamsSchema = z.object({
   id: z.uuid({ message: 'id must be a valid UUID' }),
 });
 
-export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
-export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
+export type employeeInput = z.infer<typeof employeeSchema>;
