@@ -1,27 +1,24 @@
 import type { ErrorRequestHandler } from 'express';
-import { DatabaseError } from 'pg';
-import { ZodError } from 'zod';
 
-const PG_UNIQUE_VIOLATION = '23505';
+const UNIQUE_VIOLATION = '23505';
+const INVALID_DATA_CODES = new Set(['23502', '23514', '22007', '22008', '22P02']);
+
+interface DbError {
+  code?: string;
+  column?: string;
+  constraint?: string;
+}
 
 export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
-  if (error instanceof ZodError) {
-    res.status(400).json({
-      message: 'Validation failed',
-      errors: error.issues.map((issue) => ({
-        field: issue.path.map(String).join('.'),
-        message: issue.message,
-      })),
-    });
+  const { code, column, constraint } = error as DbError;
+
+  if (error.code === UNIQUE_VIOLATION) {
+    res.status(409).json({ message: 'Employee with this email already exists' });
     return;
   }
 
-  if (
-    error instanceof DatabaseError &&
-    error.code === PG_UNIQUE_VIOLATION &&
-    error.constraint === 'employees_email_unique_idx'
-  ) {
-    res.status(409).json({ message: 'Employee with this email already exists' });
+  if (code && INVALID_DATA_CODES.has(code)) {
+    res.status(400).json({ message: 'Invalid data', column, constraint });
     return;
   }
 

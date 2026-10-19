@@ -2,7 +2,7 @@
 
 REST API (CRUD) for the [Employees Directory](https://github.com/i1yaremechko/employees-directory) project.
 
-**Stack:** Node.js, Express 5, TypeScript, PostgreSQL, zod.
+**Stack:** Node.js, Express 5, TypeScript, PostgreSQL.
 
 ## Quick Start
 
@@ -34,7 +34,6 @@ For a hosted database (e.g. Neon) run both SQL files once in its SQL editor.
 
 | Method   | Path                 | Success | Errors              |
 | -------- | -------------------- | ------- | ------------------- |
-| `GET`    | `/api/health`        | `200`   | `503`               |
 | `GET`    | `/api/employees`     | `200`   |                     |
 | `GET`    | `/api/employees/:id` | `200`   | `400`, `404`        |
 | `POST`   | `/api/employees`     | `201`   | `400`, `409`        |
@@ -64,7 +63,14 @@ Employee object:
 - `birthDate`: `DD.MM.YYYY`; `createdDate`: Unix time in seconds
 - Email is stored in lower case and must be unique (`409` otherwise)
 - `POST` and `PUT` take the same body; `id` and `createdDate` are ignored. `PUT` replaces the whole record.
-- Validation errors: `{ "message": "Validation failed", "errors": [{ "field": "email", "message": "..." }] }`
+
+## Validation
+
+Data is validated by the constraints of the `employees` table (`NOT NULL`, `CHECK`, `UNIQUE`, column types), see `sql/01-schema.sql`.
+The error handler turns database errors into responses:
+
+- `400` `{ "message": "Invalid data", "column": "...", "constraint": "..." }`: missing or invalid field, wrong position/status, bad date or UUID
+- `409` `{ "message": "Employee with this email already exists" }`
 
 ## Scripts
 

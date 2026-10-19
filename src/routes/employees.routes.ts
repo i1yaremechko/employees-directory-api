@@ -1,10 +1,5 @@
 import { Router } from 'express';
 import { pool } from '../db/pool';
-import {
-  employeeSchema,
-  employeeParamsSchema,
-  type employeeInput,
-} from '../schemas/employee.schema';
 
 const SELECT_FIELDS = `
   id,
@@ -20,17 +15,25 @@ const SELECT_FIELDS = `
   avatar_url AS "avatarUrl"
 `;
 
-function toParams(e: employeeInput) {
+const COLUMNS =
+  'first_name, last_name, email, phone, birth_date, position, status, tag, avatar_url';
+
+const VALUES = `
+  btrim($1), btrim($2), lower(btrim($3)), btrim($4), to_date($5, 'DD.MM.YYYY'),
+  $6::text, COALESCE($7, 'ACTIVE'), NULLIF(btrim($8), ''), COALESCE(btrim($9), '')
+`;
+
+function toParams(body: Record<string, unknown> = {}) {
   return [
-    e.firstName,
-    e.lastName,
-    e.email,
-    e.phone,
-    e.birthDate,
-    e.position,
-    e.status,
-    e.tag,
-    e.avatarUrl,
+    body.firstName,
+    body.lastName,
+    body.email,
+    body.phone,
+    body.birthDate,
+    body.position,
+    body.status,
+    body.tag,
+    body.avatarUrl,
   ];
 }
 
@@ -45,8 +48,9 @@ employeesRouter.get('/', async (_req, res) => {
 });
 
 employeesRouter.get('/:id', async (req, res) => {
-  const { id } = employeeParamsSchema.parse(req.params);
-  const { rows } = await pool.query(`SELECT ${SELECT_FIELDS} FROM employees WHERE id = $1`, [id]);
+  const { rows } = await pool.query(`SELECT ${SELECT_FIELDS} FROM employees WHERE id = $1`, [
+    req.params.id,
+  ]);
 
   if (rows.length === 0) {
     res.status(404).json({ message: 'Employee not found' });
@@ -57,28 +61,18 @@ employeesRouter.get('/:id', async (req, res) => {
 });
 
 employeesRouter.post('/', async (req, res) => {
-  const employee = employeeSchema.parse(req.body);
   const { rows } = await pool.query(
-    `INSERT INTO employees
-       (first_name, last_name, email, phone, birth_date, position, status, tag, avatar_url)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-     RETURNING ${SELECT_FIELDS}`,
-    toParams(employee)
+    `INSERT INTO employees (${COLUMNS}) VALUES (${VALUES}) RETURNING ${SELECT_FIELDS}`,
+    toParams(req.body)
   );
 
   res.status(201).location(`/api/employees/${rows[0].id}`).json(rows[0]);
 });
 
 employeesRouter.put('/:id', async (req, res) => {
-  const { id } = employeeParamsSchema.parse(req.params);
-  const employee = employeeSchema.parse(req.body);
   const { rows } = await pool.query(
-    `UPDATE employees
-     SET first_name = $2, last_name = $3, email = $4, phone = $5, birth_date = $6,
-         position = $7, status = $8, tag = $9, avatar_url = $10
-     WHERE id = $1
-     RETURNING ${SELECT_FIELDS}`,
-    [id, ...toParams(employee)]
+    `UPDATE employees SET (${COLUMNS}) = (${VALUES}) WHERE id = $10 RETURNING ${SELECT_FIELDS}`,
+    [...toParams(req.body), req.params.id]
   );
 
   if (rows.length === 0) {
@@ -90,8 +84,7 @@ employeesRouter.put('/:id', async (req, res) => {
 });
 
 employeesRouter.delete('/:id', async (req, res) => {
-  const { id } = employeeParamsSchema.parse(req.params);
-  const { rowCount } = await pool.query('DELETE FROM employees WHERE id = $1', [id]);
+  const { rowCount } = await pool.query('DELETE FROM employees WHERE id = $1', [req.params.id]);
 
   if (rowCount === 0) {
     res.status(404).json({ message: 'Employee not found' });
