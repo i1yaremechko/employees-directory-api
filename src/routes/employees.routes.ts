@@ -1,5 +1,12 @@
 import { Router } from 'express';
-import { pool } from '../db/pool';
+import { Pool } from 'pg';
+import { env } from '../config/env';
+
+const pool = new Pool({ connectionString: env.databaseUrl });
+
+pool.on('error', (error) => {
+  console.error('Unexpected PostgreSQL pool error:', error);
+});
 
 const SELECT_FIELDS = `
   id,
